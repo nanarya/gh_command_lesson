@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Codeレッスン 20260707</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+
+  <style>
+    /* ================================================================
+       DESIGN TOKENS
+       ================================================================ */
+    :root {
+      --c-darkest-purple: #460073;
+      --c-dark-purple: #7500C0;
+      --c-core-purple: #A100FF;
+      --c-light-purple: #C2A3FF;
+      --c-lightest-purple: #E6DCFF;
+      --c-black: #000000;
+      --c-mid-gray: #818180;
+      --c-light-gray: #CFCFCF;
+      --c-off-white: #F1F1EF;
+      --c-white: #FFFFFF;
+      --c-text-body: #333333;
+      --c-text-sub: #666666;
+      --c-pink: #FF50A0;
+      --c-blue: #224BFF;
+      --c-aqua: #05F2DB;
+
+      --f-main: 'Noto Sans JP', 'Meiryo UI', 'Meiryo', Arial, Helvetica, sans-serif;
+      --doc-pad: 24px;
+      --sidebar-width: 260px;
+    }
+
+    /* ================================================================
+       RESET & BASE
+       ================================================================ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--f-main);
+      font-size: 16px;
+      line-height: 1.8;
+      color: var(--c-text-body);
+      background: var(--c-white);
+    }
+
+    /* ================================================================
+       SPLIT VIEW — MD INPUT MODE
+       ================================================================ */
+    .md-pane {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 50%;
+      height: 100vh;
+      overflow-y: auto;
+      background: #1e1e2e;
+      color: #d4d4d4;
+      z-index: 500;
+      font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .md-pane .md-header {
+      position: sticky;
+      top: 0;
+      background: #16162a;
+      padding: 12px 20px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #C2A3FF;
+      border-bottom: 1px solid #3a3a5c;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      z-index: 1;
+    }
+
+    .md-pane .md-content {
+      padding: 20px;
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: inherit;
+      font-size: inherit;
+      line-height: inherit;
+      color: inherit;
+      background: none;
+      border: none;
+    }
+
+    .md-pane .md-ln {
+      display: inline-block;
+      width: 32px;
+      text-align: right;
+      color: #555;
+      margin-right: 16px;
+      user-select: none;
+      font-size: 12px;
+    }
+
+    .md-pane .md-h { color: #C2A3FF; font-weight: 700; }
+    .md-pane .md-strong { color: #e0e0e0; font-weight: 700; }
+    .md-pane .md-em { color: #ccc; font-style: italic; }
+    .md-pane .md-code { color: #05F2DB; }
+    .md-pane .md-link { color: #224BFF; }
+    .md-pane .md-list { color: #A100FF; font-weight: 700; }
+    .md-pane .md-bq { color: #888; }
+    .md-pane .md-hr { color: #3a3a5c; }
+
+    .split-toggle {
+      display: none;
+      position: fixed;
+      top: 8px;
+      right: 8px;
+      z-index: 9999;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: var(--f-main);
+      background: var(--c-darkest-purple);
+      color: var(--c-white);
+      border: none;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+    }
+
+    .split-toggle:hover { background: var(--c-dark-purple); }
+    body.has-md .split-toggle { display: block; }
+    body.split-mode .md-pane { display: block; }
+
+    body.dark-mode .split-toggle { background: #222240; color: #C2A3FF; }
+    body.dark-mode .split-toggle:hover { background: #3a3a5c; }
+
+    /* Split view: document adjustments */
+    body.split-mode .doc-sidebar { display: none; }
+    body.split-mode .sticky-header { left: 50%; width: 50%; }
+    body.split-mode .scroll-progress { left: 50%; width: 50%; }
+    body.split-mode .doc-cover,
+    body.split-mode .doc-body,
+    body.split-mode .doc-footer { margin-left: 50%; max-width: none; }
+
+    @media print {
+      .md-pane, .split-toggle { display: none !important; }
+    }
+
+    /* ================================================================
+       SCROLL PROGRESS BAR
+       ================================================================ */
+    .scroll-progress {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--c-light-gray);
+      z-index: 1000;
+    }
+
+    .scroll-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--c-core-purple);
+      transition: width 0.1s linear;
+    }
+
+    /* ================================================================
+       STICKY HEADER
+       ================================================================ */
+    .sticky-header {
+      position: fixed;
+      top: 3px;
+      left: var(--sidebar-width);
+      width: calc(100% - var(--sidebar-width));
+      background: var(--c-white);
+      border-bottom: 1px solid var(--c-light-gray);
+      z-index: 999;
+      transform: translateY(-100%);
+      transition: transform 0.3s ease;
+    }
+
+    .sticky-header.visible { transform: translateY(0); }
+
+    .sticky-header-inner {
+      padding: 12px var(--doc-pad);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sticky-header .doc-title-sm {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--c-black);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 60%;
+    }
+
+    .sticky-header .doc-type-badge {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--c-dark-purple);
+      background: var(--c-lightest-purple);
+      padding: 2px 12px;
+    }
+
+    /* ================================================================
+       COVER SECTION
+       ================================================================ */
+    .doc-cover {
+      margin-left: var(--sidebar-width);
+      padding: 80px var(--doc-pad) 48px;
+      border-bottom: 3px solid var(--c-core-purple);
+    }
+
+    .doc-cover .doc-type {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--c-core-purple);
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+    }
+
+    .doc-cover .doc-title {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--c-black);
+      line-height: 1.3;
+      margin-bottom: 12px;
+    }
+
+    .doc-cover .doc-subtitle {
+      font-size: 18px;
+      color: var(--c-text-body);
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .doc-cover .doc-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      font-size: 14px;
+      color: var(--c-mid-gray);
+    }
+
+    .doc-cover .doc-meta .meta-item {
+      display: flex;
+      gap: 8px;
+    }
+
+    .doc-cover .doc-meta .meta-label {
+      font-weight: 700;
+      color: var(--c-text-sub);
+    }
+
+    /* ================================================================
+       LEFT SIDEBAR TOC
+       ================================================================ */
+    .doc-sidebar {
+      position: fixed;
+      top: 3px;
+      left: 0;
+      width: var(--sidebar-width);
+      height: calc(100vh - 3px);
+      overflow-y: auto;
+      background: var(--c-white);
+      border-right: 1px solid var(--c-light-gray);
+      z-index: 998;
+      padding: 24px 0;
+    }
+
+    .doc-sidebar .toc-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--c-mid-gray);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0 20px 16px;
+      border-bottom: 1px solid var(--c-light-gray);
+      margin-bottom: 8px;
+    }
+
+    .doc-sidebar ol {
+      list-style: none;
+      counter-reset: toc-counter;
+      padding: 0;
+    }
+
+    .doc-sidebar ol li {
+      counter-increment: toc-counter;
+    }
+
+    .doc-sidebar ol li a {
+      display: block;
+      padding: 8px 20px;
+      font-size: 14px;
+      color: var(--c-text-body);
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+      line-height: 1.5;
+    }
+
+    .doc-sidebar ol li a::before {
+      content: counter(toc-counter, decimal-leading-zero) '  ';
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--c-core-purple);
+    }
+
+    .doc-sidebar ol li a:hover {
+      color: var(--c-core-purple);
+      background: var(--c-lightest-purple);
+    }
+
+    .doc-sidebar ol li a.active {
+      color: var(--c-core-purple);
+      border-left-color: var(--c-core-purple);
+      background: var(--c-lightest-purple);
+      font-weight: 700;
+    }
+
+    /* ================================================================
+       MAIN BODY
+       ================================================================ */
+    .doc-body {
+      margin-left: var(--sidebar-width);
+      padding: 0 var(--doc-pad);
+    }
+
+    /* ================================================================
+       SECTIONS
+       ================================================================ */
+    .doc-section {
+      padding: 48px 0 32px;
+      border-bottom: 1px solid var(--c-light-gray);
+    }
+
+    .doc-section:last-child { border-bottom: none; }
+
+    .doc-section h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--c-black);
+      line-height: 1.4;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--c-core-purple);
+    }
+
+    .doc-section h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--c-dark-purple);
+      line-height: 1.5;
+      margin-top: 32px;
+      margin-bottom: 16px;
+    }
+
+    .doc-section p {
+      margin-bottom: 16px;
+      line-height: 1.8;
+    }
+
+    /* ================================================================
+       CONTENT BLOCKS
+       ================================================================ */
+
+    .callout {
+      background: var(--c-lightest-purple);
+      padding: 20px 24px;
+      margin: 20px 0;
+      border-left: 4px solid var(--c-core-purple);
+    }
+
+    .callout .callout-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--c-dark-purple);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .callout .callout-body {
+      font-size: 16px;
+      color: var(--c-text-body);
+      line-height: 1.8;
+    }
+
+    .doc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin: 20px 0;
+    }
+
+    .doc-table thead th {
+      background: var(--c-core-purple);
+      color: var(--c-white);
+      font-weight: 700;
+      padding: 10px 16px;
+      text-align: left;
+    }
+
+    .doc-table tbody td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--c-light-gray);
+      color: var(--c-text-body);
+      vertical-align: top;
+    }
+
+    .kv-list { margin: 20px 0; }
+
+    .kv-row {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      border-bottom: 1px solid var(--c-light-gray);
+    }
+
+    .kv-row:first-child { border-top: 1px solid var(--c-light-gray); }
+
+    .kv-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--c-dark-purple);
+      padding: 12px 16px;
+      background: var(--c-off-white);
+    }
+
+    .kv-value {
+      font-size: 16px;
+      color: var(--c-text-body);
+      padding: 12px 16px;
+    }
+
+    .card-grid {
+      display: grid;
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+    .doc-card {
+      background: var(--c-off-white);
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .doc-card .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--c-black);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .doc-card .card-body {
+      font-size: 16px;
+      color: var(--c-text-body);
+      line-height: 1.8;
+    }
+
+    .doc-section ul,
+    .doc-section ol {
+      margin: 16px 0;
+      padding-left: 0;
+      list-style: none;
+    }
+
+    .doc-section ul li,
+    .doc-section ol li {
+      padding: 4px 0 4px 24px;
+      position: relative;
+      line-height: 1.8;
+    }
+
+    .doc-section ul li::before {
+      content: '';
+      position: absolute;
+      left: 8px;
+      top: 14px;
+      width: 6px;
+      height: 6px;
+      background: var(--c-core-purple);
+    }
+
+    .doc-section ol {
+      counter-reset: ol-counter;
+    }
+
+    .doc-section ol li {
+      counter-increment: ol-counter;
+    }
+
+    .doc-section ol li::before {
+      content: counter(ol-counter);
+      position: absolute;
+      left: 0;
+      top: 4px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--c-core-purple);
+      min-width: 20px;
+    }
+
+    /* Nested lists */
+    .doc-section ul ul,
+    .doc-section ul ol,
+    .doc-section ol ul,
+    .doc-section ol ol {
+      margin: 4px 0;
+      padding-left: 20px;
+    }
+
+    /* Code inline */
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
+      font-size: 14px;
+      color: var(--c-dark-purple);
+      background: var(--c-lightest-purple);
+      padding: 2px 6px;
+    }
+
+    .doc-divider {
+      border: none;
+      border-top: 1px solid var(--c-light-gray);
+      margin: 32px 0;
+    }
+
+    .doc-caption {
+      font-size: 14px;
+      font-style: italic;
+      color: var(--c-mid-gray);
+      margin: 8px 0 16px;
+    }
+
+    .icon-sm { width: 24px; height: 24px; flex-shrink: 0; }
+    .icon-md { width: 32px; height: 32px; flex-shrink: 0; }
+    .icon-lg { width: 48px; height: 48px; flex-shrink: 0; }
+
+    /* ================================================================
+       PROMPT BLOCK (custom component for lesson)
+       ================================================================ */
+    .prompt-block {
+      background: #1e1e2e;
+      color: #d4d4d4;
+      padding: 12px 20px;
+      margin: 8px 0;
+      font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.7;
+      border-left: 4px solid var(--c-core-purple);
+    }
+
+    .prompt-block::before {
+      content: '💬 プロンプト例';
+      display: block;
+      font-family: var(--f-main);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--c-light-purple);
+      margin-bottom: 6px;
+    }
+
+    /* ================================================================
+       FOOTER
+       ================================================================ */
+    .doc-footer {
+      margin-left: var(--sidebar-width);
+      padding: 32px var(--doc-pad) 48px;
+      text-align: left;
+      font-size: 12px;
+      color: var(--c-text-sub);
+    }
+
+    /* ================================================================
+       DARK MODE
+       ================================================================ */
+    body.dark-mode { background: #1a1a2e; color: #e0e0e0; }
+    body.dark-mode .sticky-header { background: #16162a; border-bottom-color: #3a3a5c; }
+    body.dark-mode .sticky-header .doc-title-sm { color: #ffffff; }
+    body.dark-mode .doc-cover { border-bottom-color: var(--c-core-purple); }
+    body.dark-mode .doc-cover .doc-title { color: #ffffff; }
+    body.dark-mode .doc-cover .doc-subtitle { color: #e0e0e0; }
+    body.dark-mode .doc-cover .doc-meta { color: #cccccc; }
+    body.dark-mode .doc-cover .doc-meta .meta-label { color: #cccccc; }
+    body.dark-mode .doc-sidebar { background: #16162a; border-right-color: #3a3a5c; }
+    body.dark-mode .doc-sidebar .toc-title { color: #cccccc; border-bottom-color: #3a3a5c; }
+    body.dark-mode .doc-sidebar ol li a { color: #e0e0e0; }
+    body.dark-mode .doc-sidebar ol li a:hover { background: #222240; color: var(--c-light-purple); }
+    body.dark-mode .doc-sidebar ol li a.active { background: #222240; color: var(--c-light-purple); border-left-color: var(--c-light-purple); }
+    body.dark-mode .doc-section { border-bottom-color: #3a3a5c; }
+    body.dark-mode .doc-section h2 { color: #ffffff; border-bottom-color: var(--c-core-purple); }
+    body.dark-mode .doc-section h3 { color: var(--c-light-purple); }
+    body.dark-mode .doc-section p { color: #e0e0e0; }
+    body.dark-mode .callout { background: #2a2050; }
+    body.dark-mode .callout .callout-body { color: #e0e0e0; }
+    body.dark-mode .callout .callout-title { color: #C2A3FF; }
+    body.dark-mode .doc-table thead th { background: var(--c-core-purple); }
+    body.dark-mode .doc-table tbody td { border-bottom-color: #3a3a5c; color: #e0e0e0; }
+    body.dark-mode .kv-label { background: #222240; color: var(--c-light-purple); }
+    body.dark-mode .kv-value { color: #e0e0e0; }
+    body.dark-mode .kv-row { border-bottom-color: #3a3a5c; }
+    body.dark-mode .kv-row:first-child { border-top-color: #3a3a5c; }
+    body.dark-mode .doc-card { background: #222240; }
+    body.dark-mode .doc-card .card-title { color: #ffffff; }
+    body.dark-mode .doc-card .card-body { color: #e0e0e0; }
+    body.dark-mode .doc-divider { border-top-color: #3a3a5c; }
+    body.dark-mode .doc-footer { color: #cccccc; }
+    body.dark-mode .doc-caption { color: #cccccc; }
+    body.dark-mode code { background: #2a2050; color: #C2A3FF; }
+    body.dark-mode .prompt-block { background: #111120; }
+
+    /* ================================================================
+       DARK MODE TOGGLE BUTTON
+       ================================================================ */
+    .dark-toggle {
+      position: fixed;
+      top: 10px;
+      right: 80px;
+      z-index: 9999;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: var(--f-main);
+      background: var(--c-off-white);
+      color: var(--c-dark-purple);
+      border: 1px solid var(--c-light-gray);
+      cursor: pointer;
+      letter-spacing: 0.03em;
+    }
+    .dark-toggle:hover { background: var(--c-lightest-purple); }
+    body.dark-mode .dark-toggle { background: #222240; color: #C2A3FF; border-color: #3a3a5c; }
+    body.dark-mode .dark-toggle:hover { background: #3a3a5c; }
+    @media print { .dark-toggle { display: none !important; } }
+
+    /* ================================================================
+       PRINT SUPPORT
+       ================================================================ */
+    @media print {
+      .scroll-progress, .sticky-header { display: none !important; }
+      .doc-sidebar { display: none !important; }
+      .doc-cover, .doc-body, .doc-footer { margin-left: 0; }
+      body { font-size: 11pt; }
+      .doc-cover { padding-top: 40px; }
+      .doc-section { page-break-inside: avoid; }
+      .doc-section h2 { page-break-after: avoid; }
+      .doc-table { page-break-inside: avoid; }
+      .callout { page-break-inside: avoid; }
+    }
+
+    /* ================================================================
+       RESPONSIVE
+       ================================================================ */
+    @media (max-width: 960px) {
+      :root { --doc-pad: 24px; }
+      .doc-sidebar { display: none; }
+      .doc-cover, .doc-body, .doc-footer { margin-left: 0; }
+      .sticky-header { left: 0; width: 100%; }
+      .doc-cover .doc-title { font-size: 28px; }
+      .card-grid.cols-3 { grid-template-columns: 1fr 1fr; }
+      .kv-row { grid-template-columns: 140px 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .card-grid.cols-2,
+      .card-grid.cols-3 { grid-template-columns: 1fr; }
+      .kv-row { grid-template-columns: 1fr; }
+      .kv-label { border-bottom: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- MD Input Pane (split view) -->
+  <aside class="md-pane" id="md-pane">
+    <div class="md-header">INPUT — lesson.md</div>
+    <pre class="md-content" id="md-content">## Claude Codeレッスン 20260707
+
+一番進捗/理解が遅い人に合わせて進行します。
+
+- claude code外で
+  - 適当なディレクトリを作っておこう
+    - claudeになんか色々お願いする時の雑多ディレクトリ
+    - `~/claude-workspace` とか（なんでもOK）
+      - 今後も残しておいて、claudeにリポジトリに紐づかない雑多な作業とかをさせるときに使うディレクトリのイメージ
+- claude code内で（前の手順で作ったディレクトリで）
+  - GitHubと連携しよう
+    - ghコマンドのインストールと設定
+      - 「windowsでghコマンドをインストールする方法を教えて」
+      - 「その手順を実行して」
+      - 「インストール後の認証の手順を教えて」
+    - ghコマンドでできること
+      - 「ghコマンドでできることを教えて」
+      - gitコマンドとの違い
+        - 「gitコマンドとの違いを教えて」
+    - ghコマンドを使ってみよう
+      - 「ghコマンドが使えるか確認してみて」
+    - リポジトリをクローンしてみよう
+      - `~/repos` ディレクトリを作る
+        - 今後リポジトリをクローンしていったりするときに使うディレクトリ
+      - 「このリポジトリをghコマンドで~/repos/にクローンして。 git@github.com:nanarya/gh_command_lesson.git」
+- claude codeを移動しよう（~/repos/gh_command_lesson）
+  - ghコマンドで気を付けること
+    - リポジトリ内のコードの変更ができてしまう
+    - おすすめ設定
+      - 「このリポジトリ内でghコマンドおよびgitコマンドでコードの変更はできないようにして、読み取りのみできるようにして」
+        - （例として先にsettings.jsonをコミットしておきたかったので、このプロンプトはすでに実行してリポジトリにコミット済みです）
+        - （コミット済みファイルは適当に作って精査してないので信頼しすぎないでね）
+  - issueを作ってみよう
+    - 「ghコマンドを使って、適当なissueを作ってみて」
+
+- その他なんでも聞きたいこと募集
+
+- 他適当に考えたトピック
+  - CLAUDE.mdの理解は完璧？
+    - どういう役割か
+    - 2箇所あること
+    - 直接編集できること
+  - skillsの理解は完璧？
+    - どういう役割か
+    - 2箇所あること
+    - 直接編集できること
+  - settings.jsonの理解は完璧？
+    - どういう役割か
+    - 2箇所あること
+    - 直接編集できること
+  - 作業ディレクトリの使い方を確認
+    - どこでclaudeを動かすとか
+      - claudeの雑多な作業ディレクトリ `~/claude-workspace`
+      - リポジトリ `~/repos/`
+      - ドキュメント系フォルダ OneDrive?SharePoint?のフォルダ
+        - これリポジトリ内にシンボリックリンク作っておいたりしたら良い？
+
+## 最後にやること
+- `~/repos/gh_command_lesson` を削除
+- `~/repos/` は今後リポジトリのクローンに使ってね</pre>
+  </aside>
+  <button class="split-toggle" id="split-toggle" title="Split view (M)">HTML のみ</button>
+
+  <!-- Dark/Light Toggle -->
+  <button class="dark-toggle" id="dark-toggle">Dark</button>
+
+  <!-- Scroll Progress -->
+  <div class="scroll-progress">
+    <div class="scroll-progress-bar" id="scroll-bar"></div>
+  </div>
+
+  <!-- Sticky Header -->
+  <div class="sticky-header" id="sticky-header">
+    <div class="sticky-header-inner">
+      <span class="doc-title-sm">Claude Codeレッスン 20260707</span>
+      <span class="doc-type-badge">レッスン資料</span>
+    </div>
+  </div>
+
+  <!-- Cover Section -->
+  <header class="doc-cover" id="doc-cover">
+    <div class="doc-type">レッスン資料</div>
+    <h1 class="doc-title">Claude Codeレッスン 20260707</h1>
+    <p class="doc-subtitle">ghコマンドを使ったGitHub連携の実践</p>
+    <div class="doc-meta">
+      <div class="meta-item"><span class="meta-label">作成者</span> nanarya</div>
+      <div class="meta-item"><span class="meta-label">日付</span> 2026-07-07</div>
+      <div class="meta-item"><span class="meta-label">対象</span> Claude Code ユーザー</div>
+      <div class="meta-item"><span class="meta-label">ステータス</span> 実施中</div>
+    </div>
+  </header>
+
+  <!-- Left Sidebar TOC -->
+  <nav class="doc-sidebar" id="doc-sidebar">
+    <div class="toc-title">目次</div>
+    <ol>
+      <li><a href="#section-overview">レッスン概要</a></li>
+      <li><a href="#section-presetup">事前準備</a></li>
+      <li><a href="#section-github">GitHub連携</a></li>
+      <li><a href="#section-repo">リポジトリ内での操作</a></li>
+      <li><a href="#section-topics">追加トピック</a></li>
+      <li><a href="#section-cleanup">最後にやること</a></li>
+    </ol>
+  </nav>
+
+  <!-- Main Body -->
+  <main class="doc-body">
+
+    <!-- Section 1: Overview -->
+    <section class="doc-section" id="section-overview">
+      <h2>レッスン概要</h2>
+      <div class="callout">
+        <div class="callout-title">
+          <svg class="icon-sm" viewBox="0 0 64 64" fill="none" stroke="#A100FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="32" cy="32" r="24"/>
+            <polyline points="22 32 30 40 44 24"/>
+          </svg>
+          進行方針
+        </div>
+        <div class="callout-body">一番進捗・理解が遅い人に合わせて進行します。わからないことがあれば遠慮なく聞いてください。</div>
+      </div>
+      <p>このレッスンでは、Claude Code を使って GitHub CLI（<code>gh</code> コマンド）のインストールから実際の操作までを体験します。</p>
+      <div class="card-grid cols-3">
+        <div class="doc-card">
+          <div class="card-title">
+            <svg class="icon-sm" viewBox="0 0 64 64" fill="none" stroke="#A100FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M32 8L12 18v16c0 12 8.5 20.6 20 24 11.5-3.4 20-12 20-24V18L32 8z"/>
+              <polyline points="24 32 30 38 42 26"/>
+            </svg>
+            事前準備
+          </div>
+          <div class="card-body">作業ディレクトリの作成など、Claude Code を始める前の環境整備</div>
+        </div>
+        <div class="doc-card">
+          <div class="card-title">
+            <svg class="icon-sm" viewBox="0 0 64 64" fill="none" stroke="#A100FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="32" cy="16" r="6"/>
+              <circle cx="16" cy="48" r="6"/>
+              <circle cx="48" cy="48" r="6"/>
+              <line x1="28" y1="21" x2="19" y2="43"/>
+              <line x1="36" y1="21" x2="45" y2="43"/>
+              <line x1="22" y1="48" x2="42" y2="48"/>
+            </svg>
+            GitHub連携
+          </div>
+          <div class="card-body">gh コマンドのインストール・認証・基本操作の習得</div>
+        </div>
+        <div class="doc-card">
+          <div class="card-title">
+            <svg class="icon-sm" viewBox="0 0 64 64" fill="none" stroke="#A100FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 20 8 32 20 44"/>
+              <polyline points="44 20 56 32 44 44"/>
+              <line x1="36" y1="12" x2="28" y2="52"/>
+            </svg>
+            実践操作
+          </div>
+          <div class="card-body">クローン・issue作成など実際の GitHub 操作を体験</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Pre-setup -->
+    <section class="doc-section" id="section-presetup">
+      <h2>事前準備（Claude Code 外での作業）</h2>
+      <p>Claude Code を起動する前に、作業用ディレクトリを用意しておきましょう。</p>
+
+      <h3>作業用ディレクトリの作成</h3>
+      <p>Claude にリポジトリに紐づかない雑多な作業をさせるためのディレクトリを作成します。今後も継続して使うディレクトリです。</p>
+      <div class="kv-list">
+        <div class="kv-row">
+          <div class="kv-label">推奨パス</div>
+          <div class="kv-value"><code>~/claude-workspace</code>（名前は何でもOK）</div>
+        </div>
+        <div class="kv-row">
+          <div class="kv-label">用途</div>
+          <div class="kv-value">リポジトリに紐づかない雑多な作業をClaudeにお願いするときのディレクトリ</div>
+        </div>
+        <div class="kv-row">
+          <div class="kv-label">保持</div>
+          <div class="kv-value">今後も残しておいて継続利用する</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: GitHub Integration -->
+    <section class="doc-section" id="section-github">
+      <h2>GitHub連携（Claude Code 内での作業）</h2>
+      <p>前の手順で作った作業用ディレクトリで Claude Code を起動し、以下の操作を行います。</p>
+
+      <h3>gh コマンドのインストールと設定</h3>
+      <p>Claude に次のプロンプトを順番に入力して、gh コマンドをインストールします。</p>
+
+      <div class="prompt-block">「windowsでghコマンドをインストールする方法を教えて」</div>
+      <div class="prompt-block">「その手順を実行して」</div>
+      <div class="prompt-block">「インストール後の認証の手順を教えて」</div>
+
+      <h3>gh コマンドでできることを理解する</h3>
+      <p>gh コマンドと git コマンドの違いを把握しましょう。</p>
+
+      <div class="prompt-block">「ghコマンドでできることを教えて」</div>
+      <div class="prompt-block">「gitコマンドとの違いを教えて」</div>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>コマンド</th>
+            <th>主な役割</th>
+            <th>操作対象</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>git</code></td>
+            <td>ローカルのバージョン管理</td>
+            <td>ローカルリポジトリ・コミット・ブランチ</td>
+          </tr>
+          <tr>
+            <td><code>gh</code></td>
+            <td>GitHub API へのアクセス</td>
+            <td>Issue・PR・Release・GitHub の設定など</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>gh コマンドの動作確認</h3>
+      <div class="prompt-block">「ghコマンドが使えるか確認してみて」</div>
+
+      <h3>リポジトリをクローンしてみよう</h3>
+      <p>まず <code>~/repos</code> ディレクトリを作ります。今後リポジトリをクローンするときに使うディレクトリです。</p>
+      <div class="prompt-block">「このリポジトリをghコマンドで~/repos/にクローンして。 git@github.com:nanarya/gh_command_lesson.git」</div>
+    </section>
+
+    <!-- Section 4: In-repo operations -->
+    <section class="doc-section" id="section-repo">
+      <h2>リポジトリ内での操作</h2>
+      <p>クローンしたリポジトリ（<code>~/repos/gh_command_lesson</code>）に Claude Code を移動して作業します。</p>
+
+      <h3>gh コマンドで気をつけること</h3>
+      <div class="callout">
+        <div class="callout-title">
+          <svg class="icon-sm" viewBox="0 0 64 64" fill="none" stroke="#A100FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M32 8L12 18v16c0 12 8.5 20.6 20 24 11.5-3.4 20-12 20-24V18L32 8z"/>
+            <polyline points="24 32 30 38 42 26"/>
+          </svg>
+          注意点
+        </div>
+        <div class="callout-body">gh コマンドや git コマンドを使うと、リポジトリ内のコードの変更ができてしまいます。必要に応じて読み取り専用に制限しましょう。</div>
+      </div>
+
+      <h3>おすすめ設定：読み取り専用にする</h3>
+      <div class="prompt-block">「このリポジトリ内でghコマンドおよびgitコマンドでコードの変更はできないようにして、読み取りのみできるようにして」</div>
+      <p class="doc-caption">※ 例として先に settings.json をコミットしておきたかったので、このプロンプトはすでに実行してリポジトリにコミット済みです。コミット済みファイルは適当に作って精査していないので信頼しすぎないでください。</p>
+
+      <h3>Issue を作ってみよう</h3>
+      <div class="prompt-block">「ghコマンドを使って、適当なissueを作ってみて」</div>
+
+      <hr class="doc-divider">
+
+      <h3>その他・質問タイム</h3>
+      <p>なんでも聞きたいことがあれば、この時間に質問してください。</p>
+    </section>
+
+    <!-- Section 5: Additional Topics -->
+    <section class="doc-section" id="section-topics">
+      <h2>追加トピック</h2>
+      <p>時間が余った場合や、理解を深めたい場合に取り上げるトピックです。</p>
+
+      <div class="card-grid cols-3">
+        <div class="doc-card">
+          <div class="card-title">
+            <svg class="icon-sm" viewBox="0 0 64 64" fill="none" stroke="#A100FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M40 8H16a4 4 0 00-4 4v40a4 4 0 004 4h32a4 4 0 004-4V20L40 8z"/>
+              <polyline points="40 8 40 20 52 20"/>
+              <line x1="22" y1="30" x2="42" y2="30"/>
+              <line x1="22" y1="38" x2="42" y2="38"/>
+              <line x1="22" y1="46" x2="34" y2="46"/>
+            </svg>
+            CLAUDE.md
+          </div>
+          <div class="card-body">
+            <ul>
+              <li>どういう役割か</li>
+              <li>2箇所あること（グローバル・プロジェクト）</li>
+              <li>直接編集できること</li>
+            </ul>
+          </div>
+        </div>
+        <div class="doc-card">
+          <div class="card-title">
+            <svg class="icon-sm" viewBox="0 0 64 64" fill="none" stroke="#A100FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M32 8c-8 8-12 20-12 28h24c0-8-4-20-12-28z"/>
+              <circle cx="32" cy="28" r="4"/>
+              <path d="M20 36l-6 8h8"/>
+              <path d="M44 36l6 8h-8"/>
+              <line x1="32" y1="44" x2="32" y2="56"/>
+            </svg>
+            skills
+          </div>
+          <div class="card-body">
+            <ul>
+              <li>どういう役割か</li>
+              <li>2箇所あること（グローバル・プロジェクト）</li>
+              <li>直接編集できること</li>
+            </ul>
+          </div>
+        </div>
+        <div class="doc-card">
+          <div class="card-title">
+            <svg class="icon-sm" viewBox="0 0 64 64" fill="none" stroke="#A100FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="32" cy="32" r="8"/>
+              <path d="M32 8v6m0 36v6M8 32h6m36 0h6M14.4 14.4l4.2 4.2m26.8 26.8l4.2 4.2M49.6 14.4l-4.2 4.2M18.6 45.4l-4.2 4.2"/>
+            </svg>
+            settings.json
+          </div>
+          <div class="card-body">
+            <ul>
+              <li>どういう役割か</li>
+              <li>2箇所あること（グローバル・プロジェクト）</li>
+              <li>直接編集できること</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <h3>作業ディレクトリの使い方を確認</h3>
+      <p>どこで Claude を動かすかについて、使い方が固まっているか確認しましょう。Claude Code を起動するディレクトリには3種類の使い分けがあります。</p>
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>ディレクトリ</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>~/claude-workspace</code></td>
+            <td>Claude の雑多な作業ディレクトリ。リポジトリに紐づかない作業をさせる場所</td>
+          </tr>
+          <tr>
+            <td><code>~/repos/</code></td>
+            <td>リポジトリのクローン先。コードを伴う作業の主な作業場</td>
+          </tr>
+          <tr>
+            <td>OneDrive / SharePoint のフォルダ</td>
+            <td>ドキュメント系ファイルの置き場。Claude Code をここで起動してドキュメント作業をさせる</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <div class="callout-title">
+          <svg class="icon-sm" viewBox="0 0 64 64" fill="none" stroke="#A100FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M32 8a16 16 0 00-10 28.4V44h20v-7.6A16 16 0 0032 8z"/>
+            <line x1="26" y1="52" x2="38" y2="52"/>
+            <line x1="28" y1="56" x2="36" y2="56"/>
+            <line x1="22" y1="44" x2="42" y2="44"/>
+          </svg>
+          検討トピック
+        </div>
+        <div class="callout-body">リポジトリ内に OneDrive / SharePoint フォルダへのシンボリックリンクを作っておくと便利か？→ 話し合ってみましょう</div>
+      </div>
+    </section>
+
+    <!-- Section 6: Cleanup -->
+    <section class="doc-section" id="section-cleanup">
+      <h2>最後にやること</h2>
+      <p>レッスン終了後に、以下の後片付けを行ってください。</p>
+      <ol>
+        <li><code>~/repos/gh_command_lesson</code> を削除する</li>
+        <li><code>~/repos/</code> は今後リポジトリのクローンに使い続ける</li>
+      </ol>
+      <div class="callout">
+        <div class="callout-title">
+          <svg class="icon-sm" viewBox="0 0 64 64" fill="none" stroke="#A100FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M48 32a16 16 0 01-28 10.6"/>
+            <path d="M16 32a16 16 0 0128-10.6"/>
+            <polyline points="48 20 48 32 36 32"/>
+            <polyline points="16 44 16 32 28 32"/>
+          </svg>
+          次回以降の環境
+        </div>
+        <div class="callout-body"><code>~/repos/</code> ディレクトリは今後も活用します。削除しないようにしましょう。</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="doc-footer">
+    Claude Codeレッスン 20260707
+  </footer>
+
+  <script>
+    (function () {
+      var scrollBar = document.getElementById('scroll-bar');
+      var stickyHeader = document.getElementById('sticky-header');
+      var cover = document.getElementById('doc-cover');
+
+      function onScroll() {
+        var scrollTop = window.scrollY || document.documentElement.scrollTop;
+        var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        var progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+        scrollBar.style.width = progress + '%';
+
+        var coverBottom = cover.offsetTop + cover.offsetHeight;
+        if (scrollTop > coverBottom) {
+          stickyHeader.classList.add('visible');
+        } else {
+          stickyHeader.classList.remove('visible');
+        }
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+
+      if (window.mermaid) mermaid.initialize({ startOnLoad: true, theme: 'default' });
+
+      /* ---- Dark Mode Toggle (button + D key) ---- */
+      var darkToggleBtn = document.getElementById('dark-toggle');
+      function applyDarkMode(enabled) {
+        if (enabled) {
+          document.body.classList.add('dark-mode');
+        } else {
+          document.body.classList.remove('dark-mode');
+        }
+        if (darkToggleBtn) darkToggleBtn.textContent = enabled ? 'Light' : 'Dark';
+        try { localStorage.setItem('acn-dark-mode-' + location.pathname, enabled ? '1' : '0'); } catch (e) {}
+      }
+      try {
+        if (localStorage.getItem('acn-dark-mode-' + location.pathname) === '1') applyDarkMode(true);
+      } catch (e) {}
+      if (darkToggleBtn) {
+        darkToggleBtn.addEventListener('click', function () {
+          applyDarkMode(!document.body.classList.contains('dark-mode'));
+        });
+      }
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'd' || e.key === 'D') {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+          applyDarkMode(!document.body.classList.contains('dark-mode'));
+        }
+      });
+
+      /* ---- Sidebar active section tracking ---- */
+      var sidebarLinks = document.querySelectorAll('.doc-sidebar a[href^="#"]');
+      var sections = [];
+      sidebarLinks.forEach(function(link) {
+        var id = link.getAttribute('href').substring(1);
+        var el = document.getElementById(id);
+        if (el) sections.push({ id: id, el: el, link: link });
+      });
+
+      function updateActiveSection() {
+        var scrollTop = window.scrollY || document.documentElement.scrollTop;
+        var current = null;
+        for (var i = sections.length - 1; i >= 0; i--) {
+          if (sections[i].el.offsetTop - 100 <= scrollTop) {
+            current = sections[i];
+            break;
+          }
+        }
+        sidebarLinks.forEach(function(link) { link.classList.remove('active'); });
+        if (current) current.link.classList.add('active');
+      }
+
+      window.addEventListener('scroll', updateActiveSection, { passive: true });
+      updateActiveSection();
+
+      /* ---- Split View (MD Input) ---- */
+      (function initSplitView() {
+        var mdContent = document.getElementById('md-content');
+        var toggle = document.getElementById('split-toggle');
+        if (!mdContent || !mdContent.textContent.trim()) return;
+
+        document.body.classList.add('has-md', 'split-mode');
+
+        var raw = mdContent.textContent;
+        var lines = raw.split('\n');
+        mdContent.innerHTML = lines.map(function(line, i) {
+          var n = '<span class="md-ln">' + (i + 1) + '</span>';
+          var s = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          if (/^#{1,6}\s/.test(s)) {
+            s = '<span class="md-h">' + s + '</span>';
+          } else if (/^>\s/.test(s)) {
+            s = '<span class="md-bq">' + s + '</span>';
+          } else if (/^[-*_]{3,}\s*$/.test(s)) {
+            s = '<span class="md-hr">' + s + '</span>';
+          } else {
+            s = s.replace(/^(\s*)([-*+]|\d+\.)\s/, '$1<span class="md-list">$2</span> ');
+            s = s.replace(/\*\*(.+?)\*\*/g, '<span class="md-strong">**$1**</span>');
+            s = s.replace(/(?<!\*)\*([^*]+?)\*(?!\*)/g, '<span class="md-em">*$1*</span>');
+            s = s.replace(/`([^`]+)`/g, '<span class="md-code">`$1`</span>');
+            s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<span class="md-link">[$1]($2)</span>');
+          }
+          return n + s;
+        }).join('\n');
+
+        function toggleSplit() {
+          document.body.classList.toggle('split-mode');
+          var isSplit = document.body.classList.contains('split-mode');
+          toggle.textContent = isSplit ? 'HTML のみ' : 'MD | HTML';
+          window.dispatchEvent(new Event('resize'));
+        }
+
+        toggle.addEventListener('click', toggleSplit);
+
+        document.addEventListener('keydown', function(e) {
+          if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+            toggleSplit();
+          }
+        });
+      })();
+
+    })();
+  </script>
+</body>
+</html>
